@@ -52,6 +52,8 @@ if uploaded_file is not  None:
                 f"Here is the transcript:\n\n{transcription.text}"
         )
 
+
+
         response=model.generate_content(prompt)
 
         st.subheader("meeting notes")
