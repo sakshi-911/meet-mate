@@ -4,68 +4,59 @@ from dotenv import load_dotenv
 import os
 import tempfile
 import google.generativeai as genai
-print(genai.__file__)
 
-
-
-
-# api settings 
+# Load environment variables
 load_dotenv(override=True)
-aai.settings.api_key=os.getenv('ASS_API_KEY')
+aai.settings.api_key = os.getenv('ASS_API_KEY')
 genai.configure(api_key=os.getenv("GEN_AI_KEY"))
 
+# App title and header
+st.set_page_config(page_title="MeetMate - AI Meeting Notes", layout="centered")
+st.title("📂 MeetMate - AI-Powered Meeting Summarizer")
+st.markdown("Convert your meeting recordings into clean, structured notes in just a few clicks.")
 
-st.title("upload audio file ")
-st.subheader("Input audio")
+st.divider()
 
-# audio upload
-uploaded_file = st.file_uploader("upload meeting audio",type=["mp3","wav","mp4"])
-print (uploaded_file)
+# File uploader
+st.subheader("🔊 Upload Your Audio File")
+uploaded_file = st.file_uploader(
+    "Supported formats: MP3, WAV, MP4", type=["mp3", "wav", "mp4"]
+)
 
-# set assemblyai transcriber 
-transcriber=aai.Transcriber()
-config = aai.TranscriptionConfig(speech_model=aai.SpeechModel.slam_1)
-
-if uploaded_file is not  None:
-
-
-    with st.spinner("Processing audio..."):
-        # read audio file 
-        with tempfile.NamedTemporaryFile(delete=False,suffix=".mp3") as temp_audio:
+# Transcription and summarization logic
+if uploaded_file is not None:
+    with st.spinner("🔄 Processing audio and generating notes..."):
+        # Save uploaded audio temporarily
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as temp_audio:
             temp_audio.write(uploaded_file.read())
-            temp_audio_path=temp_audio.name
+            temp_audio_path = temp_audio.name
 
-        
-        # transcribe 
+        # Transcribe audio
+        transcriber = aai.Transcriber()
+        config = aai.TranscriptionConfig(speech_model=aai.SpeechModel.slam_1)
+
         with open(temp_audio_path, "rb") as audio_file:
-            transcription =transcriber.transcribe(audio_file,config)
+            transcription = transcriber.transcribe(audio_file, config)
+
         if transcription.status == aai.TranscriptStatus.error:
-            st.error(f"Transcription failed: {transcription.error}")
+            st.error(f"❌ Transcription failed: {transcription.error}")
+        else:
+            st.success("✅ Transcription completed successfully!")
+            st.subheader("📝 Transcribed Text")
+            st.text_area("Full Transcript", transcription.text, height=300)
 
-        st.success("Transcription complete!")
-        st.text_area("Transcribed Text", transcription.text, height=300)
-        
-        model=genai.GenerativeModel("gemini-1.5-flash")
-        prompt = (
-                f"You are an AI assistant that receives transcribed meeting text and generates fully "
-                f"organized meeting notes with bullet points, timelines, and all important information. "
+            # generate meeting notes with Gemini
+            model = genai.GenerativeModel("gemini-1.5-flash")
+            prompt = (
+                "You are an AI assistant that receives transcribed meeting text and generates well-organized "
+                "meeting notes with bullet points, timelines, key takeaways, and action items. "
                 f"Here is the transcript:\n\n{transcription.text}"
-        )
+            )
+            response = model.generate_content(prompt)
 
-
-
-        response=model.generate_content(prompt)
-
-        st.subheader("meeting notes")
-        st.markdown(response.text)
-
-        # 
-
+            # display notes
+            st.subheader("📄 Generated Meeting Notes")
+            st.markdown(response.text)
 
 else:
-    st.info('upload an audio file ')
-
-
-
-
-
+    st.info("📥 Please upload an audio file to get started.")
